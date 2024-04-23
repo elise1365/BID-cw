@@ -4,6 +4,11 @@ from sklearn.metrics.pairwise import pairwise_distances
 import ast
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+# Remove unreleased films from the dataset
+def cleanDataset(df):
+    df = df[df['status'] != 'Unreleased']
+    return df
+
 def reduceToNames(obj):
     lst = []
     if obj:
@@ -43,6 +48,8 @@ def contentBasedRecommender(similarityMatrix, itemIndex):
 movies = pd.read_csv(r"C:\Users\pokem\OneDrive\Documents\tmdb_5000_movies.csv")
 credits = pd.read_csv(r"C:\Users\pokem\OneDrive\Documents\tmdb_5000_credits.csv")
 
+movies = cleanDataset(movies)
+
 movies['cast'] = credits['cast']
 
 # Sort movies by revenue
@@ -69,5 +76,4 @@ similarityMatrix = np.transpose(similarityMatrix)
 
 print(contentBasedRecommender(similarityMatrix, 0))
 print(contentBasedRecommender(similarityMatrix, 15))
-
 
