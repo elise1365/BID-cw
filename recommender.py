@@ -1,11 +1,15 @@
 import pandas as pd
-import numpy as np
 from sklearn.metrics.pairwise import pairwise_distances
 import ast
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Remove unreleased films from the dataset
 def cleanDataset(df):
+    # Remove any entries with null values
+    for index, row in df.iterrows():
+        if row.isnull().any():
+            df = df.drop(index)
+    
+    # Remove unreleased films from the dataset
     df = df[df['status'] != 'Unreleased']
     return df
 
@@ -16,11 +20,11 @@ def reduceToNames(obj):
             lst.append(i['name'])
     return lst
 
-def contentBasedRecommender(similarityMatrix, itemIndex):
-    # Gets the column of distances for the movie being asked about
-    column = similarityMatrix[itemIndex]
-    # Sort column so that top 6 highest scores are stored
-    lst = column.argsort()[-6:]
+def contentBasedRecommender(similarityMatrix, itemIndex, movies):
+    # Gets the row of distances for the movie being asked about
+    row = similarityMatrix[itemIndex]
+    # Sort row so that top 6 highest scores are stored
+    lst = row.argsort()[-6:]
     # Remove the first film from the list, this is the movie we are asking for recomendations from
     lst = [i for i in lst if i != itemIndex]
     # List of movie titles
@@ -33,6 +37,7 @@ def contentBasedRecommender(similarityMatrix, itemIndex):
         similar_movies.append(labels[i])
         if len(similar_movies) >= 5:
             break
+        
     # If less than 5 movies are found within top 1000, add from the overall list
     if len(similar_movies) < 5:
         remaining = 5 - len(similar_movies)
@@ -42,38 +47,58 @@ def contentBasedRecommender(similarityMatrix, itemIndex):
                 remaining -= 1
                 if remaining == 0:
                     break
-    return "If you liked '" + labels[itemIndex] + "' then you'd probably like: '" + "', '".join(similar_movies) + "'."
+                
+    output = "If you liked '" + labels[itemIndex] + "' then you'd probably like: '" + "', '".join(similar_movies) + "'."
+    return output
 
-# Open datasets
-movies = pd.read_csv(r"C:\Users\pokem\OneDrive\Documents\tmdb_5000_movies.csv")
-credits = pd.read_csv(r"C:\Users\pokem\OneDrive\Documents\tmdb_5000_credits.csv")
+def datasetPreprocessing():
+    # Open datasets
+    movies = pd.read_csv(r"C:\Users\pokem\OneDrive\Documents\tmdb_5000_movies.csv")
+    credits = pd.read_csv(r"C:\Users\pokem\OneDrive\Documents\tmdb_5000_credits.csv")
 
-movies = cleanDataset(movies)
+    movies['cast'] = credits['cast']
 
-movies['cast'] = credits['cast']
+    movies = cleanDataset(movies)
 
-# Sort movies by revenue
-movies = movies.sort_values('revenue', ascending=False)
+    # Sort movies by revenue
+    movies = movies.sort_values('revenue', ascending=False)
 
-# Remove the ids from genres and keywords
-movies['genres'] = movies['genres'].apply(reduceToNames)
-movies['keywords'] = movies['keywords'].apply(reduceToNames)
-movies['cast'] = movies['cast'].apply(reduceToNames)
+    # Remove the ids from genres and keywords
+    movies['genres'] = movies['genres'].apply(reduceToNames)
+    movies['keywords'] = movies['keywords'].apply(reduceToNames)
+    movies['cast'] = movies['cast'].apply(reduceToNames)
 
-movies['genres'] = movies['genres'].apply(lambda x: ' '.join(x))
-movies['keywords'] = movies['keywords'].apply(lambda x: ' '.join(x))
-movies['cast'] = movies['cast'].apply(lambda x: ' '.join(x))
+    movies['genres'] = movies['genres'].apply(lambda x: ' '.join(x))
+    movies['keywords'] = movies['keywords'].apply(lambda x: ' '.join(x))
+    movies['cast'] = movies['cast'].apply(lambda x: ' '.join(x))
 
-movies['all_attributes'] = movies['genres'] + movies['keywords'] + movies['cast']
+    movies['all_attributes'] = movies['genres'] + movies['keywords'] + movies['cast']
+    
+    return movies
 
-# Tfid vectorizer
-vectorizer = TfidfVectorizer()
-tfidf_matrix = vectorizer.fit_transform(movies['all_attributes'])
+def createSimilarityMatrix(movies):
+    # Tfid vectorizer
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform(movies['all_attributes'])
 
-# Create similarity matrix
-similarityMatrix = 1 - pairwise_distances(tfidf_matrix, metric='cosine')
-similarityMatrix = np.transpose(similarityMatrix)
+    # Create similarity matrix
+    similarityMatrix = 1 - pairwise_distances(tfidf_matrix, metric='cosine')
+    
+    return similarityMatrix
 
-print(contentBasedRecommender(similarityMatrix, 0))
-print(contentBasedRecommender(similarityMatrix, 15))
+# Implement the recommender system so its user friendly and ready to use
+def systemImplementation():
+    movies = datasetPreprocessing()
 
+    movie = input('Please enter a movie: ')
+    movieIndex = 0
+    for index, row in movies.iterrows():
+        if row['title'] == movie:
+            movieIndex = index
+            
+            similarityMatrix = createSimilarityMatrix(movies)
+            print(contentBasedRecommender(similarityMatrix, movieIndex, movies))
+            break
+        
+
+systemImplementation()
