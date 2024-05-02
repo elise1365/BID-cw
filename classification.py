@@ -1,7 +1,6 @@
 import pandas as pd
 import scipy.io
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score 
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
@@ -10,10 +9,13 @@ from sklearn.metrics import classification_report
 def openTestLabels():
     path = r"C:\Users\pokem\OneDrive\Documents\BID cw datasets\LabelTestAll.mat"
 
+    # open matlab file
     labels = scipy.io.loadmat(path)
     
+    # Take first item from labelTest - contains all the data, just formatted badly
     labels_test = labels['LabelTest'][0]
     
+    # Time to tidy up data:
     # Create a list to store the data
     lst = []
     
@@ -22,6 +24,7 @@ def openTestLabels():
         # Access the elements of the array
         imgName = arr[0].tolist()[0]
         label = arr[1].tolist()
+        # label data is 1st item in a dictionary, again, just formatted weirdly
         label = label[0]
         
         # Take the labels and convert them to the named columns from the readme
@@ -33,7 +36,7 @@ def openTestLabels():
                           'race':race, 'orientation':orientation, 'x2':x2, 'y2':y2,
                           'w2':w2, 'h2':h2
                           })
-    
+    # convert to dataframe
     testDf = pd.DataFrame(lst)
     
     return testDf
@@ -78,30 +81,29 @@ def openTrainLabels():
     return trainDf
 
 def randomForestModel():
-    # Take the training dataset
-    train_df = openTrainLabels()
-    
     # Because the labels for the training and testing dataset are slightly different, select the features they share
     features = ['x', 'y', 'w', 'h', 'occ_type', 'occ_degree', 'gender', 'race', 'orientation']
     
-    
+    train_df = openTrainLabels()
     x_train = train_df[features].values
+    #y_train is expected output, the category we are training the model on
     y_train = (train_df['occ_type'] != 3).values.astype(int)
-    x_train, x_test, y_train, y_test = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
-    
-    #random forest classifier trained with the training sets
-    rf_classifier = RandomForestClassifier(random_state=42)
-    rf_classifier.fit(x_train, y_train)
     
     test_df = openTestLabels()
     test_df = test_df[test_df['face_type'].notna()] 
     x_test = test_df[features].values
     y_test = (test_df['face_type'] == 1).values.astype(int)
     
+    # random forest classifier trained with the training sets
+    rf_classifier = RandomForestClassifier(random_state=42)
+    rf_classifier.fit(x_train, y_train)
+    
+    # predict whether each item in x_test contains a face and compare to y_train (indicates whether each is a face)
     y_pred = rf_classifier.predict(x_test)
     
     evaluateResults(y_test, y_pred)
 
+# Results analysis and visualisation
 def evaluateResults(test, predictions):
     # Accuracy
     accuracy = accuracy_score(test, predictions)
@@ -116,7 +118,3 @@ def evaluateResults(test, predictions):
     print(classification_report(test,predictions))
 
 randomForestModel()
-
-
-    
-    
