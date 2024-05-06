@@ -69,7 +69,7 @@ def datasetPreprocessing():
     movies = cleanDataset(movies)
 
     # Sort movies by revenue
-    movies = movies.sort_values('revenue', ascending=True)
+    movies = movies.sort_values('revenue', ascending=False)
 
     # Remove the ids from chosen attributes
     movies['genres'] = movies['genres'].apply(reduceToNames)
